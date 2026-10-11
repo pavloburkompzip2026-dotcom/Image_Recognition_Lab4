@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vision AI Analyzer v5.0 (+ Бенчмарк ЛР3)</title>
+  <script src="https://unpkg.com/brain.js"></script>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent-color: #10b981;
+      --accent-hover: #059669;
+      --info-color: #38bdf8;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .app-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 720px;
+      box-sizing: border-box;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+
+    .header h2 { margin: 0; font-size: 20px; color: var(--info-color); }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--info-color);
+      margin-top: 15px;
+      margin-bottom: 10px;
+      border-left: 3px solid var(--info-color);
+      padding-left: 8px;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 15px;
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .config-item { display: flex; flex-direction: column; gap: 4px; }
+    .config-item label { font-size: 12px; color: var(--text-muted); }
+    .config-item input, .config-item select {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .file-upload-wrapper { position: relative; margin-bottom: 15px; }
+
+    .file-upload-label {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 18px;
+      background: #0f172a;
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 13px;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .file-upload-label:hover { border-color: var(--info-color); color: var(--text-main); }
+    input[type="file"] { display: none; }
+
+    .preview-box {
+      width: 100%;
+      height: 200px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    #preview { width: 100%; height: 100%; object-fit: cover; display: none; }
+
+    .progress-wrapper {
+      display: none;
+      margin-bottom: 15px;
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .progress-bar-bg { background: #334155; height: 10px; border-radius: 5px; overflow: hidden; }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, #38bdf8, #10b981);
+      height: 100%; width: 0%; transition: width 0.05s linear;
+    }
+
+    .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+
+    .action-btn {
+      flex: 1;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .action-btn:hover { background-color: var(--accent-hover); }
+    .action-btn.secondary { background-color: #3b82f6; }
+    .action-btn.secondary:hover { background-color: #2563eb; }
+    .action-btn.benchmark { background-color: #8b5cf6; }
+    .action-btn.benchmark:hover { background-color: #7c3aed; }
+
+    .log-box {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      color: #4ade80;
+      height: 100px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+
+    /* Блок результату аналізу */
+    #result-card {
+      display: none;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .timer-badge {
+      font-size: 12px;
+      background: #334155;
+      color: var(--info-color);
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    .result-value { font-size: 18px; font-weight: 700; color: #ffffff; text-align: center; margin-bottom: 10px; }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 15px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      width: 90px;
+      height: 90px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .grid-cell { width: 100%; height: 100%; }
+
+    .probs-list { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+    .prob-info { display: flex; justify-content: space-between; margin-bottom: 2px; }
+    .bar-bg { background: #334155; height: 5px; border-radius: 3px; overflow: hidden; }
+    .bar-fill { background: linear-gradient(90deg, #38bdf8, #10b981); height: 100%; width: 0%; transition: width 0.4s ease; }
+
+    .export-box {
+      margin-top: 15px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .export-buttons { display: flex; gap: 8px; }
+
+    /* Блок бенчмаркінгу */
+    #benchmark-section {
+      display: none;
+      background: #0f172a;
+      border: 1px solid var(--info-color);
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .benchmark-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .benchmark-table th, .benchmark-table td {
+      border: 1px solid var(--border-color);
+      padding: 6px;
+    }
+
+    .benchmark-table th { background: #1e293b; color: var(--info-color); }
+
+    #chartCanvas {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-top: 10px;
+      width: 100%;
+      height: 150px;
+    }
+
+    .export-btn {
+      flex: 1;
+      background: #334155;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .export-btn:hover { background: var(--info-color); color: #000; }
+    .report-btn { background: var(--danger-color); }
+    .report-btn:hover { background: #dc2626; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="header">
+    <h2>⚡ Vision AI Analyzer v5.0 (+ Бенчмарк ЛР3)</h2>
+    <span style="font-size:12px; color:var(--text-muted)">Лабораторна робота №3</span>
+  </div>
+
+  <div class="section-title">⚙️ Налаштування та завантаження</div>
+  <div class="config-grid">
+    <div class="config-item">
+      <label for="epochsInput">Кількість епох:</label>
+      <input type="number" id="epochsInput" value="300">
+    </div>
+    <div class="config-item">
+      <label for="lrInput">Learning Rate:</label>
+      <input type="number" id="lrInput" value="0.05" step="0.005">
+    </div>
+  </div>
+
+  <div class="file-upload-wrapper">
+    <label for="imageLoader" class="file-upload-label" id="fileLabel">
+      <span>Оберіть тестове фото для аналізу / бенчмарку</span>
+    </label>
+    <input type="file" id="imageLoader" accept="image/*">
+  </div>
+
+  <div class="preview-box">
+    <div id="previewPlaceholder" style="color:var(--text-muted); font-size:13px;">Зображення не завантажено</div>
+    <img id="preview" alt="Прев'ю">
+  </div>
+
+  <div class="progress-wrapper" id="progressWrapper">
+    <div class="progress-header">
+      <span id="progressStatus">Стан: Очікування...</span>
+      <span id="progressPercent">0%</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBarFill"></div>
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button class="action-btn secondary" onclick="trainModelBatch()">1. Навчити мережу</button>
+    <button class="action-btn" onclick="startAnalysis()">2. Аналізувати</button>
+    <button class="action-btn benchmark" onclick="runBenchmark()">🚀 3. Бенчмарк (5 запусків)</button>
+  </div>
+
+  <div class="section-title">📜 Журнал подій</div>
+  <div class="log-box" id="logConsole">
+    <div>[SYS] Модуль аналізу та бенчмаркінгу готовий к роботі.</div>
+  </div>
+
+  <!-- КАРТКА РЕЗУЛЬТАТІВ АНАЛІЗУ -->
+  <div id="result-card">
+    <div style="text-align: center;">
+      <span class="timer-badge" id="executionTimer">⏱ Час виконання: 0 ms</span>
+    </div>
+
+    <div class="result-value" id="result-text">Результат: -</div>
+
+    <div class="analysis-grid">
+      <div>
+        <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Карта зон:</div>
+        <div class="grid-container" id="grid"></div>
+      </div>
+
+      <div class="probs-list">
+        <div>
+          <div class="prob-info"><span>🌊 Водойма</span><span id="p-water">0%</span></div>
+          <div class="bar-bg"><div id="b-water" class="bar-fill"></div></div>
+        </div>
+        <div>
+          <div class="prob-info"><span>🌲 Ліс</span><span id="p-forest">0%</span></div>
+          <div class="bar-bg"><div id="b-forest" class="bar-fill"></div></div>
+        </div>
+        <div>
+          <div class="prob-info"><span>🏜️ Пустеля</span><span id="p-desert">0%</span></div>
+          <div class="bar-bg"><div id="b-desert" class="bar-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="export-box">
+      <div style="font-size:11px; text-transform:uppercase; color:var(--text-muted);">Зберегти результат:</div>
+      <div class="export-buttons">
+        <button class="export-btn" onclick="downloadImage('png')">Зберегти PNG</button>
+        <button class="export-btn" onclick="downloadImage('jpeg')">Зберегти JPG</button>
+        <button class="export-btn" onclick="downloadImage('bmp')">Зберегти BMP</button>
+      </div>
+      <button class="export-btn report-btn" style="width:100%;" onclick="reportBadResult()">⚠️ Відхилити результат</button>
+    </div>
+  </div>
+
+  <!-- БЛОК ВІЗУАЛІЗАЦІЇ БЕНЧМАРКУ (Пункт 7) -->
+  <div id="benchmark-section">
+    <div style="font-size:14px; font-weight:bold; color:var(--info-color);">📊 Результати бенчмаркінгу (ЛР3)</div>
+    <div id="image-info-text" style="font-size:11px; color:var(--text-muted); margin-top:4px;">Параметри файлу: -</div>
+
+    <table class="benchmark-table">
+      <thead>
+        <tr>
+          <th>Параметр</th>
+          <th>Запуск 1</th>
+          <th>Запуск 2</th>
+          <th>Запуск 3</th>
+          <th>Запуск 4</th>
+          <th>Запуск 5</th>
+          <th>Мін / Макс</th>
+          <th>Середній час</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td id="bm-resolution">0x0</td>
+          <td id="r1">-</td>
+          <td id="r2">-</td>
+          <td id="r3">-</td>
+          <td id="r4">-</td>
+          <td id="r5">-</td>
+          <td id="bm-minmax" style="color:var(--warning-color);">-</td>
+          <td id="bm-avg" style="color:var(--accent-color); font-weight:bold;">-</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="font-size:11px; margin-top:10px; color:var(--text-muted);">📈 Графік розкиду часу виконання (ms):</div>
+    <canvas id="chartCanvas" width="600" height="150"></canvas>
+
+    <button class="export-btn" style="width:100%; margin-top:10px;" onclick="downloadLog()">Завантажити повний лог тестування (.txt)</button>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+</div>
+
+<script>
+  let net = null;
+  let logHistory = [];
+  let loadedFileObj = null;
+
+  function log(msg) {
+    const timestamp = new Date().toLocaleTimeString();
+    const formatted = `[${timestamp}] ${msg}`;
+    logHistory.push(formatted);
+    const consoleEl = document.getElementById('logConsole');
+    const div = document.createElement('div');
+    div.innerText = formatted;
+    consoleEl.appendChild(div);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+
+  function downloadLog() {
+    const blob = new Blob([logHistory.join('\n')], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `benchmark_log_${Date.now()}.txt`;
+    link.click();
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; } 
+    else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h: h * 360, s, l };
+  }
+
+  function generateDataset() {
+    const dataset = [];
+    for (let i = 0; i < 100; i++) {
+      let inpW = {}, inpF = {}, inpD = {};
+      for(let z=0; z<9; z++) {
+        inpW[`h_${z}`] = (180 + Math.random()*50) / 360; inpW[`s_${z}`] = 0.5; inpW[`l_${z}`] = 0.4;
+        inpF[`h_${z}`] = (70 + Math.random()*80) / 360;  inpF[`s_${z}`] = 0.5; inpF[`l_${z}`] = 0.3;
+        inpD[`h_${z}`] = (20 + Math.random()*30) / 360;  inpD[`s_${z}`] = 0.5; inpD[`l_${z}`] = 0.5;
+      }
+      dataset.push({ input: inpW, output: { water: 1 } });
+      dataset.push({ input: inpF, output: { forest: 1 } });
+      dataset.push({ input: inpD, output: { desert: 1 } });
+    }
+    return dataset;
+  }
+
+  async function trainModelBatch() {
+    const epochs = parseInt(document.getElementById('epochsInput').value) || 300;
+    const learningRate = parseFloat(document.getElementById('lrInput').value) || 0.05;
+    const dataset = generateDataset();
+    net = new brain.NeuralNetwork({ hiddenLayers: [16, 8], learningRate: learningRate });
+    
+    log(`Старт навчання: ${epochs} епох...`);
+    net.train(dataset, { iterations: epochs, errorThresh: 0.005 });
+    log(`Навчання успішно завершено!`);
+  }
+
+  const imageLoader = document.getElementById('imageLoader');
+  const preview = document.getElementById('preview');
+  const previewPlaceholder = document.getElementById('previewPlaceholder');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+
+  imageLoader.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      loadedFileObj = file;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          preview.src = img.src;
+          preview.style.display = 'block';
+          previewPlaceholder.style.display = 'none';
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          log(`Завантажено: ${img.width}x${img.height}px (${(file.size/1024).toFixed(1)} KB)`);
+        }
+        img.src = event.target.result;
+      }
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Повноцінна функція обробки + рендер результатів на екрані
+  function recognizeImageProcess() {
+    const startTime = performance.now();
+    const w = canvas.width, h = canvas.height;
+    const cellW = Math.floor(w / 3), cellH = Math.floor(h / 3);
+
+    const inputs = {};
+    const gridEl = document.getElementById('grid');
+    gridEl.innerHTML = '';
+
+    let desertScore = 0, forestScore = 0, waterScore = 0;
+    let zoneIndex = 0;
+
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const imgData = ctx.getImageData(col * cellW, row * cellH, cellW, cellH).data;
+        let rSum = 0, gSum = 0, bSum = 0;
+        const pixelCount = imgData.length / 4;
+
+        for (let i = 0; i < imgData.length; i += 4) {
+          rSum += imgData[i]; gSum += imgData[i + 1]; bSum += imgData[i + 2];
+        }
+
+        const avgR = rSum / pixelCount;
+        const avgG = gSum / pixelCount;
+        const avgB = bSum / pixelCount;
+
+        const hsl = rgbToHsl(avgR, avgG, avgB);
+        
+        inputs[`h_${zoneIndex}`] = hsl.h / 360;
+        inputs[`s_${zoneIndex}`] = hsl.s;
+        inputs[`l_${zoneIndex}`] = hsl.l;
+
+        if (hsl.h >= 10 && hsl.h <= 55) desertScore += 1.5;
+        else if (hsl.h > 55 && hsl.h <= 165) forestScore += 1.5;
+        else if (hsl.h > 165 && hsl.h <= 260) waterScore += 1.5;
+
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        cell.style.backgroundColor = `rgb(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)})`;
+        gridEl.appendChild(cell);
+
+        zoneIndex++;
+      }
+    }
+
+    const netOutput = net.run(inputs);
+
+    let finalDesert = (netOutput.desert || 0) * 0.4 + (desertScore / 13.5) * 0.6;
+    let finalForest = (netOutput.forest || 0) * 0.4 + (forestScore / 13.5) * 0.6;
+    let finalWater = (netOutput.water || 0) * 0.4 + (waterScore / 13.5) * 0.6;
+
+    const total = finalDesert + finalForest + finalWater || 1;
+    finalDesert /= total; finalForest /= total; finalWater /= total;
+
+    const duration = performance.now() - startTime;
+
+    // Оновлення картки результатів
+    document.getElementById('executionTimer').innerText = `⏱️ Час виконання аналізу: ${duration.toFixed(2)} ms`;
+
+    const updateBar = (key, val) => {
+      const prob = (val * 100).toFixed(1);
+      document.getElementById(`p-${key}`).innerText = `${prob}%`;
+      document.getElementById(`b-${key}`).style.width = `${prob}%`;
+    };
+
+    updateBar('water', finalWater);
+    updateBar('forest', finalForest);
+    updateBar('desert', finalDesert);
+
+    let maxVal = Math.max(finalWater, finalForest, finalDesert);
+    let resultName = "Пустеля 🏜️";
+    if (maxVal === finalWater) resultName = "Водойма 🌊";
+    else if (maxVal === finalForest) resultName = "Густий ліс 🌲";
+
+    document.getElementById('result-text').innerText = `Визначено: ${resultName}`;
+    document.getElementById('result-card').style.display = 'block';
+
+    return duration;
+  }
+
+  async function startAnalysis() {
+    if (!preview.src || preview.style.display === 'none') return alert("Оберіть зображення!");
+    if (!net) await trainModelBatch();
+
+    const duration = recognizeImageProcess();
+    log(`Аналіз виконано за ${duration.toFixed(2)} ms`);
+  }
+
+  // 🚀 ФУНКЦІЯ БЕНЧМАРКІНГУ (5 запусків)
+  async function runBenchmark() {
+    if (!canvas.width) return alert("Спочатку завантажте зображення!");
+    if (!net) await trainModelBatch();
+
+    log(`--- СТАРТ БЕНЧМАРКУ (5 ЗАПУСКІВ) ---`);
+    document.getElementById('benchmark-section').style.display = 'block';
+
+    const runs = [];
+    
+    // Холостий прогін (JIT Warm-up)
+    recognizeImageProcess();
+
+    for (let i = 1; i <= 5; i++) {
+      await new Promise(r => setTimeout(r, 40));
+      const timeMs = recognizeImageProcess();
+      runs.push(timeMs);
+      document.getElementById(`r${i}`).innerText = `${timeMs.toFixed(2)}ms`;
+      log(`Запуск #${i}: ${timeMs.toFixed(2)} ms`);
+    }
+
+    const min = Math.min(...runs).toFixed(2);
+    const max = Math.max(...runs).toFixed(2);
+    const avg = (runs.reduce((a, b) => a + b, 0) / runs.length).toFixed(2);
+
+    const totalPixels = canvas.width * canvas.height;
+    document.getElementById('bm-resolution').innerText = `${canvas.width}x${canvas.height}`;
+    document.getElementById('image-info-text').innerText = 
+      `Роздільна здатність: ${canvas.width}x${canvas.height} px | Пікселів: ${totalPixels.toLocaleString()} px | Файл: ${(loadedFileObj.size/1024).toFixed(1)} KB (${loadedFileObj.type})`;
+
+    document.getElementById('bm-minmax').innerText = `${min} / ${max} ms`;
+    document.getElementById('bm-avg').innerText = `${avg} ms`;
+
+    drawChart(runs);
+    log(`Бенчмарк завершено. Сер. час: ${avg} ms`);
+  }
+
+  function drawChart(data) {
+    const c = document.getElementById('chartCanvas');
+    const cx = c.getContext('2d');
+    cx.clearRect(0, 0, c.width, c.height);
+
+    const padding = 30;
+    const w = c.width - padding * 2;
+    const h = c.height - padding * 2;
+    const maxVal = Math.max(...data) * 1.2 || 1;
+
+    cx.strokeStyle = '#334155';
+    cx.lineWidth = 1;
+    cx.beginPath();
+    cx.moveTo(padding, padding); cx.lineTo(padding, c.height - padding);
+    cx.lineTo(c.width - padding, c.height - padding);
+    cx.stroke();
+
+    cx.strokeStyle = '#38bdf8';
+    cx.lineWidth = 2;
+    cx.beginPath();
+
+    data.forEach((val, i) => {
+      const x = padding + (i / (data.length - 1)) * w;
+      const y = c.height - padding - (val / maxVal) * h;
+      if (i === 0) cx.moveTo(x, y);
+      else cx.lineTo(x, y);
+    });
+    cx.stroke();
+
+    data.forEach((val, i) => {
+      const x = padding + (i / (data.length - 1)) * w;
+      const y = c.height - padding - (val / maxVal) * h;
+      cx.fillStyle = '#10b981';
+      cx.beginPath();
+      cx.arc(x, y, 4, 0, Math.PI * 2);
+      cx.fill();
+
+      cx.fillStyle = '#94a3b8';
+      cx.font = '10px sans-serif';
+      cx.fillText(`${val.toFixed(1)}ms`, x - 12, y - 8);
+    });
+  }
+
+  function downloadImage(format) {
+    if (!canvas.width) return;
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL(`image/${format}`);
+    link.download = `result_image.${format}`;
+    link.click();
+  }
+
+  function reportBadResult() {
+    log("⚠️ Результат відхилено користувачем.");
+    alert("Скарга зафіксована у лог-файлі.");
+  }
+</script>
+</body>
+</html>
