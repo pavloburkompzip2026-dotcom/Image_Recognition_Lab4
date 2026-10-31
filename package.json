@@ -1,0 +1,13 @@
+{
+  "name": "image_recognition_lab3",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "jest --verbose"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "dependencies": {
+    "brain.js": "^2.0.0-beta.2"
+  }
+}
